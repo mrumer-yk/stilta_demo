@@ -80,7 +80,7 @@ function renderModel(model) {
   const live = Boolean(model?.api_key_present);
   els.modelLine.textContent = live
     ? `Gemini optional: ${model.model} active`
-    : "Local deterministic engine active - Gemini optional";
+    : "Local agentic workflow active - Gemini optional";
   els.modelLine.classList.toggle("ok", live);
 }
 

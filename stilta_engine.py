@@ -189,7 +189,7 @@ def build_limitation(label_index: int, text: str, interpretation: str | None = N
     }
 
 
-def deterministic_split_claim(claim_text: str) -> list[dict[str, Any]]:
+def local_agentic_split_claim(claim_text: str) -> list[dict[str, Any]]:
     claim = re.sub(r"\s+", " ", claim_text.strip())
     if not claim:
         return []
@@ -250,14 +250,14 @@ def gemini_split_claim(claim_text: str, gemini: GeminiClient) -> tuple[list[dict
 
 
 def split_claim_into_limitations(claim_text: str, gemini: GeminiClient | None = None) -> list[dict[str, Any]]:
-    deterministic = deterministic_split_claim(claim_text)
+    local_limitations = local_agentic_split_claim(claim_text)
     if gemini and gemini.enabled and claim_text.strip():
         limitations, error = gemini_split_claim(claim_text, gemini)
         if limitations:
             return limitations
-        # Keep deterministic behavior reliable when Gemini is unavailable or malformed.
+        # Keep the local agentic parser reliable when Gemini is unavailable or malformed.
         _ = error
-    return deterministic
+    return local_limitations
 
 
 def interpret_limitation(text: str) -> str:
@@ -391,12 +391,12 @@ def apply_gemini_chart_review(rows: list[dict[str, Any]], gemini: GeminiClient) 
             "support_level": row["support_level"],
             "source_id": row.get("source_id"),
             "snippet": row.get("snippet", "")[:700],
-            "deterministic_rationale": row["rationale"],
+            "agentic_rationale": row["rationale"],
         }
         for row in rows
     ]
     prompt = (
-        "Review these deterministic claim-chart rows. Return only JSON in this exact shape: "
+        "Review these local agentic claim-chart rows. Return only JSON in this exact shape: "
         '{"rows":[{"limitation_id":"1A","rationale":"short grounded rationale","review_question":"question for attorney review"}]}. '
         "Use only the provided source_id/snippet. Do not add new citations. Do not give final legal advice. "
         "Do not decide infringement, validity, or enforceability.\n\n"
@@ -593,9 +593,9 @@ def answer_from_matter(question: str, matter: dict[str, Any], chart: list[dict[s
     if not relevant_rows:
         relevant_rows = chart[:3]
 
-    deterministic = build_chat_fallback(redacted_question, relevant_rows)
+    local_answer = build_agentic_chat_answer(redacted_question, relevant_rows)
     gemini_error = None
-    answer = deterministic
+    answer = local_answer
     if gemini and gemini.enabled:
         context_lines = []
         for row in relevant_rows[:6]:
@@ -641,7 +641,7 @@ def answer_from_matter(question: str, matter: dict[str, Any], chart: list[dict[s
             if not citation_warnings and not safety_warnings and looks_complete:
                 answer = result.text
             else:
-                gemini_error = "Gemini answer failed citation or safety audit; deterministic answer used."
+                gemini_error = "Gemini answer failed citation or safety audit; local agentic answer used."
         else:
             gemini_error = result.error
     return {
@@ -651,7 +651,7 @@ def answer_from_matter(question: str, matter: dict[str, Any], chart: list[dict[s
     }
 
 
-def build_chat_fallback(question: str, rows: list[dict[str, Any]]) -> str:
+def build_agentic_chat_answer(question: str, rows: list[dict[str, Any]]) -> str:
     if not rows:
         return "No claim-chart analysis exists yet. Add sources and run analysis first."
     lines = []
