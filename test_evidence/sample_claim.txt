@@ -1,0 +1,11 @@
+1. A machine monitoring system comprising:
+
+1A. a sensor module configured to receive temperature, vibration, and motor-current readings from one or more machine sensors;
+
+1B. a processor configured to compare the received sensor readings against configurable threshold values and generate an alert condition when a threshold is exceeded;
+
+1C. a network interface configured to transmit the alert condition to a remote dashboard server;
+
+1D. a dashboard service configured to display a warning banner to an operator in response to the alert condition;
+
+1E. a payment module configured to charge a user account when the alert condition is generated.

@@ -1,0 +1,25 @@
+ACME Widget Controller Technical Manual
+Document: Reference D
+Revision: 4.2
+Publication date: 2018-11-14
+
+Overview
+The ACME Widget Controller is an industrial equipment monitoring system for automated production lines. The controller includes a sensor module, a network interface, a processor, local storage, and a dashboard service.
+
+Sensor Module
+The controller receives temperature, vibration, and motor-current readings from multiple machine sensors. Each reading is timestamped and stored as a machine-status event. The sensor module can sample readings every 30 seconds and forward the readings to the processor.
+
+Processing
+The processor compares incoming sensor readings against configurable threshold values. When a reading exceeds a configured threshold, the processor generates an alert condition. The processor can also calculate rolling averages over a five-minute window before deciding whether the alert condition should be escalated.
+
+Network Transmission
+The network interface sends alert conditions and machine-status events to a remote dashboard server. The dashboard server displays the current status of each monitored machine and stores historical events for later review.
+
+Operator Notification
+When an alert condition is generated, the dashboard service displays a warning banner for the operator. The service may also send an email notification to a maintenance address configured by the plant administrator.
+
+Maintenance Log
+The system stores maintenance notes entered by the operator. The notes may include repair actions, replacement parts, and the time when the machine returned to normal operation.
+
+Security
+The system requires an administrator password to change threshold values. Passwords and notification email addresses are redacted in exported logs.

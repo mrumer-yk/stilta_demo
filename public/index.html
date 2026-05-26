@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Stilta Evidence Graph Lab</title>
+    <meta name="description" content="Patent matter workspace: claim chart, evidence matching, attorney-review report." />
+    <link rel="stylesheet" href="/static/styles.css?v=20260526-phase2" />
+  </head>
+  <body>
+    <div class="app-shell">
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">S</div>
+          <div>
+            <strong>Stilta Lab</strong>
+            <p>Patent workspace</p>
+          </div>
+        </div>
+
+        <div id="model-line" class="model-line">Checking model...</div>
+
+        <div class="sidebar-section">
+          <div class="sidebar-title">
+            <span>Matters</span>
+            <button id="new-matter" type="button">+ New Matter</button>
+          </div>
+          <div id="matter-list" class="matter-list"></div>
+        </div>
+      </aside>
+
+      <!-- Workspace -->
+      <main class="workspace">
+
+        <!-- Header bar -->
+        <header class="workspace-header">
+          <div>
+            <h1 id="workspace-title">Patent Evidence Agent</h1>
+            <span id="analysis-status" class="status-pill">Load a matter to begin</span>
+          </div>
+          <div class="header-actions">
+            <button id="save-matter" class="secondary-button" type="button">Save</button>
+            <button id="analyze-matter" class="primary-button" type="button">Analyze</button>
+          </div>
+        </header>
+
+        <!-- Inputs -->
+        <section class="setup-grid" id="setup-section">
+          <section class="panel">
+            <div class="panel-header">
+              <strong>Matter &amp; Claim</strong>
+            </div>
+            <div class="form-row-3">
+              <label>Matter title <input id="matter-title" type="text" /></label>
+              <label>Target patent <input id="matter-patent" type="text" /></label>
+              <label>Priority date <input id="matter-priority" type="text" placeholder="YYYY-MM-DD" /></label>
+            </div>
+            <label>Review question <textarea id="matter-question" rows="2" placeholder="e.g. Does the prior art disclose each limitation of claim 1?"></textarea></label>
+            <label>Claim text <textarea id="matter-claim" rows="8" placeholder="Paste the full claim text here. Separate limitations with line breaks or semicolons."></textarea></label>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <strong>Evidence Sources</strong>
+            </div>
+            <div id="source-list" class="source-list"></div>
+            <div class="source-form">
+              <div class="form-row-2">
+                <label>Title <input id="source-title" type="text" placeholder="Reference D excerpt" /></label>
+                <label>Type
+                  <select id="source-type">
+                    <option value="prior_art">Prior Art</option>
+                    <option value="product_doc">Product Documentation</option>
+                    <option value="technical_paper">Technical Paper</option>
+                    <option value="file_history">File History</option>
+                    <option value="attorney_note">Attorney Note</option>
+                  </select>
+                </label>
+              </div>
+              <label class="file-import">
+                <span>Import source file</span>
+                <input id="source-file" type="file" accept=".txt,.md,.text" />
+              </label>
+              <label>Text <textarea id="source-text" rows="5" placeholder="Paste a patent excerpt or technical source"></textarea></label>
+              <button id="add-source" class="secondary-button" type="button">Add Source</button>
+            </div>
+          </section>
+        </section>
+
+        <!-- Claim Chart -->
+        <section class="panel" id="claim-chart-section">
+          <div class="panel-header">
+            <strong>Claim Chart</strong>
+            <span id="chart-summary" class="muted-text"></span>
+          </div>
+          <div class="table-wrap">
+            <table id="claim-chart">
+              <thead>
+                <tr>
+                  <th>Limitation</th>
+                  <th>Interpretation</th>
+                  <th>Support</th>
+                  <th>Evidence &amp; Matched Terms</th>
+                  <th>Review Question</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Evidence Graph -->
+        <section class="panel" id="evidence-graph-panel">
+          <div class="panel-header">
+            <strong>Evidence Graph</strong>
+            <span id="graph-summary" class="muted-text"></span>
+          </div>
+          <div id="evidence-graph-view" class="evidence-graph empty-state">Run analysis to build the graph.</div>
+        </section>
+
+        <!-- Chat + Warnings -->
+        <section class="bottom-grid">
+          <section class="panel chat-panel" id="matter-chat">
+            <div class="panel-header">
+              <strong>Ask the Evidence</strong>
+              <span class="muted-text">Ctrl+Enter to send</span>
+            </div>
+            <div id="chat-log" class="chat-log"></div>
+            <form id="chat-form" class="chat-form">
+              <textarea id="chat-input" rows="2" placeholder="Ask about missing support, strongest evidence, or caveats..."></textarea>
+              <button class="primary-button" type="submit">Ask</button>
+            </form>
+          </section>
+
+          <section class="panel" id="warnings-section">
+            <div class="panel-header">
+              <strong>Warnings &amp; Audit</strong>
+              <button id="run-evals" class="secondary-button" type="button">Run Evals</button>
+            </div>
+            <div id="warnings-list" class="empty-state">No warnings yet.</div>
+            <div id="audit-list" class="empty-state" style="margin-top:10px">No activity yet.</div>
+            <div id="eval-results" style="margin-top:10px"></div>
+          </section>
+        </section>
+
+        <!-- Report -->
+        <section class="panel" id="report-preview">
+          <div class="panel-header">
+            <strong>Attorney-Review Report</strong>
+            <button id="open-report" class="secondary-button" type="button">Open Report</button>
+          </div>
+          <div id="report-preview-view" class="empty-state">Run analysis to render a report.</div>
+        </section>
+
+      </main>
+    </div>
+    <script src="/static/app.js?v=20260526-phase2"></script>
+  </body>
+</html>
