@@ -94,15 +94,15 @@ flowchart LR
     User["User"] --> UI["Web workspace<br/>public/index.html"]
     UI --> API["Python HTTP API<br/>server.py"]
     API --> DB[("SQLite<br/>data/stilta_evidence_graph.sqlite")]
-    API --> Gemini["Gemini<br/>optional"]
-    API --> Engine["Analysis engine<br/>stilta_engine.py"]
+    API --> Workflow["Local agentic workflow<br/>stilta_engine.py"]
 
-    Engine --> Parser["Claim parser"]
-    Engine --> Redactor["Sensitive text redactor"]
-    Engine --> Matcher["Evidence matcher"]
-    Engine --> Auditor["Citation and safety auditor"]
-    Engine --> Graph["Evidence graph builder"]
-    Engine --> Report["Report generator"]
+    Workflow --> Parser["Claim parser agent"]
+    Workflow --> Redactor["Source redaction agent"]
+    Workflow --> Matcher["Evidence matcher agent"]
+    Workflow --> Auditor["Citation and safety auditor"]
+    Workflow --> Graph["Evidence graph builder agent"]
+    Workflow --> Report["Report writer agent"]
+    Workflow -. "optional second-pass review" .-> Gemini["Gemini<br/>optional enhancement"]
 
     Parser --> DB
     Redactor --> DB
@@ -117,9 +117,13 @@ flowchart LR
 ```mermaid
 flowchart TD
     Start["Analyze matter"] --> Intake["Analysis controller<br/>records run start"]
-    Intake --> ClaimParser["Claim parser<br/>split claim into limitations"]
-    ClaimParser --> Corpus["Corpus stage<br/>redact and chunk sources"]
-    Corpus --> Matcher["Matcher<br/>score limitation-source support"]
+    Intake --> ClaimParser["Claim parser agent<br/>split claim into limitations"]
+    ClaimParser -. "if API key exists" .-> GeminiParser["Optional Gemini parser review"]
+    GeminiParser -. "validated JSON only" .-> ClaimParser
+    ClaimParser --> Corpus["Corpus agent<br/>redact and chunk sources"]
+    Corpus --> Matcher["Matcher agent<br/>score limitation-source support"]
+    Matcher -. "if API key exists" .-> GeminiChart["Optional Gemini chart review"]
+    GeminiChart -. "grounded rationale only" .-> Matcher
     Matcher --> Auditor["Auditor<br/>check citations, missing evidence, legal overclaim"]
     Auditor --> GraphBuilder["Graph builder<br/>persist nodes and edges"]
     GraphBuilder --> Reporter["Reporter<br/>generate attorney-review report"]
@@ -152,18 +156,24 @@ sequenceDiagram
     participant U as User
     participant UI as Browser UI
     participant API as server.py
-    participant E as stilta_engine.py
-    participant G as Gemini optional
+    participant A as Local agentic workflow
+    participant G as Optional Gemini review
     participant DB as SQLite
 
     U->>UI: Add claim and sources
     UI->>API: POST /api/matters/{id}/analyze
     API->>DB: Clear previous analysis
-    API->>E: Parse claim
-    E-->>G: Optional structured review
-    E-->>API: Limitations
-    API->>E: Redact, chunk, match, audit
-    E-->>API: Chart, warnings, graph, report
+    API->>A: Start controller run
+    A->>A: Parse claim into limitations
+    opt GEMINI_API_KEY is set
+        A->>G: Request structured parser/chart review
+        G-->>A: Return validated grounded JSON
+    end
+    A->>A: Redact sources and build chunks
+    A->>A: Match evidence and score support
+    A->>A: Audit citations, missing evidence, and unsafe legal claims
+    A->>A: Build evidence graph and report
+    A-->>API: Chart, warnings, graph, report, audit metadata
     API->>DB: Persist derived state
     API-->>UI: Full updated matter
     UI-->>U: Chart, graph, audit, report
