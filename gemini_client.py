@@ -6,10 +6,27 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 
 DEFAULT_MODEL = "gemini-3.1-pro-preview"
+
+
+def load_env_file(path: Path | None = None) -> None:
+    env_path = path or Path(__file__).with_name(".env")
+    if not env_path.exists():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
 
 
 @dataclass
@@ -21,6 +38,7 @@ class GeminiResult:
 
 class GeminiClient:
     def __init__(self) -> None:
+        load_env_file()
         self.api_key = os.environ.get("GEMINI_API_KEY", "").strip()
         self.model = os.environ.get("GEMINI_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
 
@@ -97,5 +115,6 @@ class GeminiClient:
             return GeminiResult(None, f"Unexpected Gemini response: {exc}", self.model)
 
 
+@lru_cache(maxsize=1)
 def gemini_client() -> GeminiClient:
     return GeminiClient()

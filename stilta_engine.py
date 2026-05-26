@@ -44,6 +44,20 @@ STOP_WORDS = {
     "said",
 }
 
+S_SUFFIX_EXCEPTIONS = {
+    "access",
+    "address",
+    "analysis",
+    "class",
+    "express",
+    "glass",
+    "lass",
+    "pass",
+    "process",
+}
+
+MAX_CHUNK_CHARS = 650
+
 SYNONYMS = {
     "collect": {"collect", "collects", "collected", "capture", "captures", "captured", "obtain", "obtains"},
     "receive": {"receive", "receives", "receiving", "received", "accept", "ingest", "forwards", "forward"},
@@ -114,7 +128,7 @@ def normalize_word(word: str) -> str:
         word = word[:-3]
     elif len(word) > 4 and word.endswith("ed"):
         word = word[:-2]
-    elif len(word) > 4 and word.endswith("s"):
+    elif len(word) > 4 and word.endswith("s") and word not in S_SUFFIX_EXCEPTIONS and not word.endswith("ss"):
         word = word[:-1]
     return word
 
@@ -255,8 +269,8 @@ def split_claim_into_limitations(claim_text: str, gemini: GeminiClient | None = 
         limitations, error = gemini_split_claim(claim_text, gemini)
         if limitations:
             return limitations
-        # Keep the local agentic parser reliable when Gemini is unavailable or malformed.
-        _ = error
+        if error:
+            print(f"[stilta_engine] gemini_split_claim failed: {error}", flush=True)
     return local_limitations
 
 
@@ -280,16 +294,36 @@ def chunk_source(source: dict[str, Any]) -> list[dict[str, Any]]:
         sentences = re.split(r"(?<=[.!?])\s+", paragraph)
         current = ""
         for sentence in sentences:
-            if len(current) + len(sentence) > 650 and current:
-                chunks.append(build_chunk(source_id, len(chunks), current, matter_id))
-                current = sentence
-            else:
-                current = f"{current} {sentence}".strip()
+            sentence_parts = split_long_sentence(sentence)
+            for part in sentence_parts:
+                if len(current) + len(part) > MAX_CHUNK_CHARS and current:
+                    chunks.append(build_chunk(source_id, len(chunks), current, matter_id))
+                    current = part
+                else:
+                    current = f"{current} {part}".strip()
         if current:
             chunks.append(build_chunk(source_id, len(chunks), current, matter_id))
     if not chunks and redacted.strip():
-        chunks.append(build_chunk(source_id, 0, redacted.strip(), matter_id))
+        for part in split_long_sentence(redacted.strip()):
+            chunks.append(build_chunk(source_id, len(chunks), part, matter_id))
     return chunks
+
+
+def split_long_sentence(text: str, max_len: int = MAX_CHUNK_CHARS) -> list[str]:
+    clean = re.sub(r"\s+", " ", text.strip())
+    if len(clean) <= max_len:
+        return [clean] if clean else []
+    parts = []
+    remaining = clean
+    while len(remaining) > max_len:
+        cut = remaining.rfind(" ", 0, max_len)
+        if cut < max_len // 2:
+            cut = max_len
+        parts.append(remaining[:cut].strip())
+        remaining = remaining[cut:].strip()
+    if remaining:
+        parts.append(remaining)
+    return parts
 
 
 def build_chunk(source_id: str, index: int, text: str, matter_id: int | str | None = None) -> dict[str, Any]:
@@ -626,7 +660,7 @@ def answer_from_matter(question: str, matter: dict[str, Any], chart: list[dict[s
         if result.text:
             valid_source_ids = {row["source_id"] for row in chart if row.get("source_id")}
             citation_warnings = validate_citations(result.text, valid_source_ids)
-            cited_source_ids = set(re.findall(r"\bSRC-\d{3}\b", result.text))
+            cited_source_ids = set(re.findall(r"\b(?:M\d+-)?SRC-\d{3}\b", result.text))
             if valid_source_ids and not cited_source_ids:
                 citation_warnings.append(
                     {

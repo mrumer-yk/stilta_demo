@@ -218,6 +218,7 @@ The report includes a caveat because this is an attorney-review aid, not legal a
 From this folder:
 
 ```powershell
+pip install -r requirements.txt
 python server.py
 ```
 
@@ -240,6 +241,16 @@ $env:GEMINI_API_KEY='your-key'
 $env:GEMINI_MODEL='gemini-3.1-pro-preview'
 python server.py
 ```
+
+On macOS or Linux:
+
+```bash
+export GEMINI_API_KEY='your-key'
+export GEMINI_MODEL='gemini-3.1-pro-preview'
+python server.py
+```
+
+You can also copy `.env.example` to `.env` and fill in the values. The app reads `.env` automatically and does not require `python-dotenv`.
 
 Never commit API keys to the repository.
 

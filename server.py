@@ -340,7 +340,13 @@ def handle_chat(matter_id: int, payload: dict[str, Any]) -> dict[str, Any]:
         "Answered a follow-up question using current matter context.",
         {"gemini_error": result.get("gemini_error")},
     )
-    return {"answer": result, "matter": get_full_matter(matter_id), "model": gemini_client().status()}
+    return {
+        "answer": result["answer"],
+        "redactions": result.get("redactions", []),
+        "gemini_error": result.get("gemini_error"),
+        "matter": get_full_matter(matter_id),
+        "model": gemini_client().status(),
+    }
 
 
 def run_evals() -> dict[str, Any]:
@@ -540,7 +546,7 @@ class StiltaHandler(BaseHTTPRequestHandler):
                     json_response(self, run_analysis(matter_id), 201)
                     return
                 if action == "chat":
-                    json_response(self, handle_chat(matter_id, payload), 201)
+                    json_response(self, handle_chat(matter_id, payload), 200)
                     return
             json_response(self, {"error": f"Not found: POST {parsed.path}"}, 404)
         except Exception as exc:

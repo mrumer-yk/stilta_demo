@@ -1,15 +1,23 @@
+import contextlib
+import io
+import json
+import threading
 import unittest
 import tempfile
+import urllib.request
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 from gemini_client import DEFAULT_MODEL, gemini_client
-from server import run_analysis, run_evals
+from server import StiltaHandler, handle_chat, run_analysis, run_evals
 import stilta_memory
 from stilta_engine import (
     analyze_matter,
     answer_from_matter,
     build_claim_chart,
     build_warnings,
+    chunk_source,
+    normalize_word,
     redact_text,
     split_claim_into_limitations,
     validate_citations,
@@ -92,6 +100,9 @@ class StiltaEvidenceGraphTests(unittest.TestCase):
     def test_gemini_default_model(self):
         self.assertEqual(gemini_client().model, DEFAULT_MODEL)
 
+    def test_gemini_client_is_singleton(self):
+        self.assertIs(gemini_client(), gemini_client())
+
     def test_gemini_parser_and_chart_review_are_used_when_available(self):
         class FakeGemini:
             enabled = True
@@ -131,6 +142,96 @@ class StiltaEvidenceGraphTests(unittest.TestCase):
         ]
         chart = build_claim_chart(limitations, chunks, fake)
         self.assertIn("Gemini-reviewed", chart[0]["ai_review"])
+
+    def test_gemini_parser_errors_are_visible(self):
+        class BadGemini:
+            enabled = True
+            model = "bad-gemini"
+
+            def generate(self, system, prompt, max_tokens=900):
+                class Result:
+                    text = "not json"
+                    error = None
+
+                return Result()
+
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            limitations = split_claim_into_limitations(CLAIM, BadGemini())
+        self.assertGreaterEqual(len(limitations), 4)
+        self.assertIn("gemini_split_claim failed", output.getvalue())
+
+    def test_gemini_chat_accepts_matter_scoped_citations(self):
+        class CitingGemini:
+            enabled = True
+            model = "citing-gemini"
+
+            def generate(self, system, prompt, max_tokens=900):
+                class Result:
+                    text = "1A is supported by M4-SRC-001 because the cited snippet describes the sensor module."
+                    error = None
+
+                return Result()
+
+        chart = [
+            {
+                "limitation_id": "1A",
+                "support_level": "Strong",
+                "source_id": "M4-SRC-001",
+                "snippet": "The sensor module receives vibration readings.",
+                "rationale": "Direct source support.",
+                "terms": ["sensor", "vibration"],
+            }
+        ]
+        answer = answer_from_matter("What supports 1A?", {"id": 4, "title": "Eval"}, chart, [], CitingGemini())
+        self.assertIsNone(answer["gemini_error"])
+        self.assertIn("M4-SRC-001", answer["answer"])
+
+    def test_normalize_word_keeps_common_s_suffix_words(self):
+        self.assertEqual(normalize_word("process"), "process")
+        self.assertEqual(normalize_word("analysis"), "analysis")
+        self.assertEqual(normalize_word("express"), "express")
+        self.assertEqual(normalize_word("sensors"), "sensor")
+
+    def test_chunk_source_splits_long_single_sentence(self):
+        long_sentence = " ".join(["technical"] * 180) + "."
+        chunks = chunk_source({"id": "SRC-001", "text": long_sentence})
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(len(chunk["text"]) <= 650 for chunk in chunks))
+
+    def test_handle_chat_returns_flat_answer(self):
+        from stilta_memory import create_matter, init_db
+
+        init_db()
+        mid = create_matter({"title": "Flat Chat", "question": "Q", "claim_text": CLAIM})
+        payload = handle_chat(mid, {"message": "What is missing?"})
+        self.assertIsInstance(payload["answer"], str)
+        self.assertNotIsInstance(payload["answer"], dict)
+
+    def test_chat_endpoint_returns_200(self):
+        from stilta_memory import create_matter, init_db
+
+        init_db()
+        mid = create_matter({"title": "HTTP Chat", "question": "Q", "claim_text": CLAIM})
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), StiltaHandler)
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            body = json.dumps({"message": "What is missing?"}).encode("utf-8")
+            request = urllib.request.Request(
+                f"http://127.0.0.1:{httpd.server_port}/api/matters/{mid}/chat",
+                data=body,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=5) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+                self.assertEqual(response.status, 200)
+                self.assertIsInstance(payload["answer"], str)
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            thread.join(timeout=5)
 
     def test_eval_endpoint_suite(self):
         result = run_evals()
