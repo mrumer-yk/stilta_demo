@@ -442,9 +442,9 @@ def run_evals() -> dict[str, Any]:
     )
     cases.append(
         {
-            "name": "Gemini configured as provider",
-            "passed": gemini_client().status()["model"] == "gemini-3.1-pro-preview",
-            "details": gemini_client().status()["model"],
+            "name": "Gemini is optional",
+            "passed": gemini_client().status()["required"] is False,
+            "details": f"default mode: {gemini_client().status()['mode']}",
         }
     )
     return {

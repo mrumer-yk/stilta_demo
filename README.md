@@ -2,7 +2,7 @@
 
 A working patent evidence workspace for turning claims and messy technical sources into source-backed claim charts, evidence graphs, audit trails, matter-aware chat, and attorney-review reports.
 
-This is not a landing page or a static mockup. It is a real local web app with persistent SQLite storage, deterministic analysis, optional Gemini reasoning, safety checks, and evals.
+This is not a landing page or a static mockup. It is a real local web app with persistent SQLite storage, deterministic analysis, optional Gemini reasoning, safety checks, and evals. Gemini is not required to run or test the product.
 
 ## Why This Exists
 
@@ -70,6 +70,22 @@ Current sample files:
 - `test_evidence/acme_widget_reference.txt`
 
 PDF upload is not implemented yet. The current production-safe path is to extract text from a PDF and add it as a text source. A PDF parser can be added as a next step.
+
+## AI Model Requirement
+
+No AI model is required for the core workflow.
+
+By default, the app runs with a deterministic local engine for:
+
+- Claim splitting
+- Source redaction
+- Evidence matching
+- Support scoring
+- Warning generation
+- Evidence graph building
+- Report rendering
+
+Gemini is an optional enhancement. If `GEMINI_API_KEY` is set, the app uses Gemini for a second-pass review and more natural chat responses. If the key is missing or the API fails, the product still works.
 
 ## System Architecture
 
@@ -203,7 +219,9 @@ http://127.0.0.1:8020
 
 ## Optional Gemini Setup
 
-The app works without an API key using deterministic analysis.
+Gemini is optional, not mandatory.
+
+The app works out of the box without an API key using the local deterministic analysis engine. A Gemini key only adds an AI review pass for claim parsing, chart review, and chat wording.
 
 To enable Gemini:
 

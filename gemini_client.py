@@ -29,11 +29,14 @@ class GeminiClient:
         return bool(self.api_key)
 
     def status(self) -> dict[str, Any]:
+        mode = "gemini" if self.enabled else "deterministic"
         return {
-            "provider": "gemini",
+            "provider": "optional_gemini",
             "model": self.model,
             "api_key_present": self.enabled,
-            "fallback": "deterministic analysis remains active when Gemini is unavailable",
+            "required": False,
+            "mode": mode,
+            "fallback": "local deterministic analysis is the default when Gemini is not configured",
         }
 
     def generate(self, system: str, prompt: str, max_tokens: int = 900) -> GeminiResult:
@@ -96,4 +99,3 @@ class GeminiClient:
 
 def gemini_client() -> GeminiClient:
     return GeminiClient()
-

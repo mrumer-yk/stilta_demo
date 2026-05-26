@@ -79,8 +79,8 @@ function setBusy(button, busyText, isBusy) {
 function renderModel(model) {
   const live = Boolean(model?.api_key_present);
   els.modelLine.textContent = live
-    ? `OK ${model.model}`
-    : `${model?.model || "Gemini"} - no key, deterministic mode`;
+    ? `Gemini optional: ${model.model} active`
+    : "Local deterministic engine active - Gemini optional";
   els.modelLine.classList.toggle("ok", live);
 }
 
